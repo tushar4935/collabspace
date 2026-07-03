@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Circle, Layer, Line, Rect, Stage } from "react-konva";
 import { api } from "../api";
+import CommentsSection from "../components/CommentsSection";
 import Navbar from "../components/Navbar";
 
 // The canvas has a FIXED logical size instead of stretching to the window.
@@ -207,6 +208,12 @@ export default function WhiteboardPage() {
             </Layer>
           </Stage>
         </div>
+
+        <CommentsSection
+          teamId={teamId}
+          targetType="whiteboard"
+          targetId={whiteboardId}
+        />
       </main>
     </div>
   );

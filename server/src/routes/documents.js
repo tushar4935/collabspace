@@ -1,7 +1,9 @@
 import { Router } from "express";
 import Document from "../models/Document.js";
+import Comment from "../models/Comment.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
+import { logActivity } from "../utils/activity.js";
 
 // Mounted at /api/teams/:teamId/documents. mergeParams lets this router (and
 // the membership middleware) read :teamId from the mount path.
@@ -34,6 +36,7 @@ router.post("/", async (req, res) => {
     teamId: req.params.teamId,
     createdBy: req.userId,
   });
+  await logActivity(req.params.teamId, req.userId, `created document "${doc.title}"`);
   res.status(201).json({ document: publicDocument(doc) });
 });
 
@@ -94,6 +97,9 @@ router.delete("/:documentId", async (req, res) => {
       .json({ message: "Only the document's creator or the team owner can delete it" });
   }
   await doc.deleteOne();
+  // A deleted document's comments have nowhere to display — drop them too.
+  await Comment.deleteMany({ targetType: "document", targetId: doc._id });
+  await logActivity(req.params.teamId, req.userId, `deleted document "${doc.title}"`);
   res.json({ ok: true });
 });
 

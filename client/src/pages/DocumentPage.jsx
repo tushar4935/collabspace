@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
+import CommentsSection from "../components/CommentsSection";
 import Navbar from "../components/Navbar";
 
 export default function DocumentPage() {
@@ -92,12 +93,18 @@ export default function DocumentPage() {
 
         {/* Placeholder body — the real-time Yjs + Tiptap editor lands in a
             later phase and replaces this block. */}
-        <section className="bg-gray-900 rounded-lg p-6 min-h-[16rem]">
+        <section className="bg-gray-900 rounded-lg p-6 min-h-64">
           <p className="text-gray-500 text-sm">
             The collaborative editor arrives in Phase 6. For now this page just
             proves the document exists, loads, and can be renamed.
           </p>
         </section>
+
+        <CommentsSection
+          teamId={teamId}
+          targetType="document"
+          targetId={documentId}
+        />
       </main>
     </div>
   );

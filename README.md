@@ -109,6 +109,24 @@ The canvas is a fixed 1000×600 logical space rather than stretching to the
 window, so saved coordinates mean the same thing on every screen — which is
 what makes the shared real-time board possible later.
 
+## Verify Phase 4 (comments, mentions, activity)
+
+1. Open any document or whiteboard — a Comments section sits under it.
+2. As **User A**, write a comment. Type `@` — a member picker appears; pick
+   **User B**. The posted comment shows `@B's name` highlighted.
+3. As **User B** (incognito), open the same page: A's comment is there. Click
+   **Reply** and answer. Replies render indented under the parent, one level
+   deep — replying to a reply attaches to the same thread.
+4. Delete rules: B can delete B's own comments; A (team owner) can delete
+   anyone's. Deleting a top-level comment removes its replies with it.
+5. On the team page, **Recent activity** lists what just happened — team
+   created, members added, documents/whiteboards created and deleted,
+   comments posted — newest first with names and timestamps.
+
+Mentions are stored as user ids sent by the picker, not parsed out of the
+text by the server — display names are ambiguous, ids are not. (Mention
+notifications arrive with Phase 7.)
+
 ### RBAC design in one line
 
 The role lives on the **Membership** (user–team pair), not on the User —

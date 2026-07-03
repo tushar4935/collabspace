@@ -1,7 +1,9 @@
 import { Router } from "express";
 import Whiteboard from "../models/Whiteboard.js";
+import Comment from "../models/Comment.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
+import { logActivity } from "../utils/activity.js";
 
 // Mounted at /api/teams/:teamId/whiteboards — same shape as documents.js.
 const router = Router({ mergeParams: true });
@@ -32,6 +34,7 @@ router.post("/", async (req, res) => {
     teamId: req.params.teamId,
     createdBy: req.userId,
   });
+  await logActivity(req.params.teamId, req.userId, `created whiteboard "${board.title}"`);
   res.status(201).json({ whiteboard: boardSummary(board) });
 });
 
@@ -104,6 +107,9 @@ router.delete("/:whiteboardId", async (req, res) => {
     });
   }
   await board.deleteOne();
+  // A deleted board's comments have nowhere to display — drop them too.
+  await Comment.deleteMany({ targetType: "whiteboard", targetId: board._id });
+  await logActivity(req.params.teamId, req.userId, `deleted whiteboard "${board.title}"`);
   res.json({ ok: true });
 });
 

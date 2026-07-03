@@ -80,6 +80,7 @@ export default function TeamPage() {
   const [docError, setDocError] = useState("");
   const [whiteboards, setWhiteboards] = useState([]);
   const [boardError, setBoardError] = useState("");
+  const [activity, setActivity] = useState([]);
 
   useEffect(() => {
     api
@@ -100,6 +101,10 @@ export default function TeamPage() {
       .get(`/teams/${teamId}/whiteboards`)
       .then((res) => setWhiteboards(res.data.whiteboards))
       .catch(() => setBoardError("Could not load whiteboards"));
+    api
+      .get(`/teams/${teamId}/activity`)
+      .then((res) => setActivity(res.data.activity))
+      .catch(() => {});
   }, [teamId]);
 
   // The delete buttons mirror the server rule (creator or team owner) —
@@ -273,6 +278,27 @@ export default function TeamPage() {
           linkFor={(b) => `/teams/${teamId}/whiteboards/${b.id}`}
           canDelete={canDeleteItem}
         />
+
+        <section className="bg-gray-900 rounded-lg p-4 space-y-3">
+          <h2 className="text-white font-semibold text-sm">Recent activity</h2>
+          {activity.length === 0 ? (
+            <p className="text-gray-500 text-sm">Nothing has happened yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-800">
+              {activity.map((entry) => (
+                <li key={entry.id} className="py-2 flex items-baseline justify-between gap-3">
+                  <p className="text-sm text-gray-300">
+                    <span className="text-white font-medium">{entry.user}</span>{" "}
+                    {entry.action}
+                  </p>
+                  <span className="text-gray-500 text-xs whitespace-nowrap">
+                    {new Date(entry.timestamp).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </main>
     </div>
   );

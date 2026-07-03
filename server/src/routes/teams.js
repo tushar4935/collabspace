@@ -4,6 +4,7 @@ import Membership from "../models/Membership.js";
 import User from "../models/User.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
+import { logActivity } from "../utils/activity.js";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.post("/", async (req, res) => {
   }
   const team = await Team.create({ name: name.trim(), ownerId: req.userId });
   await Membership.create({ userId: req.userId, teamId: team._id, role: "owner" });
+  await logActivity(team._id, req.userId, `created team "${team.name}"`);
   res.status(201).json({ team: { id: team._id, name: team.name } });
 });
 
@@ -78,6 +80,7 @@ router.post("/:teamId/members", requireMembership("owner"), async (req, res) => 
     teamId: req.params.teamId,
     role: "member",
   });
+  await logActivity(req.params.teamId, req.userId, `added ${user.name} to the team`);
   res.status(201).json({
     member: {
       id: user._id,
@@ -105,6 +108,12 @@ router.delete(
       return res.status(400).json({ message: "The team owner cannot be removed" });
     }
     await membership.deleteOne();
+    const removed = await User.findById(req.params.userId);
+    await logActivity(
+      req.params.teamId,
+      req.userId,
+      `removed ${removed?.name ?? "a user"} from the team`
+    );
     res.json({ ok: true });
   }
 );
