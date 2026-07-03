@@ -100,8 +100,8 @@ cd client && npm run dev
 2. Draw with each tool: **pen** (freehand), **rect** and **circle** (click and
    drag), then switch to **eraser** and click a shape — the whole shape
    disappears (shapes are deleted as units, never partially erased).
-3. "Unsaved changes" appears — click **Save**, then reload the page. Every
-   shape comes back exactly where it was (elements persisted to MongoDB).
+3. Reload the page. Every shape comes back exactly where it was (the live
+   server persists board state to MongoDB automatically — see Phase 5).
 4. Delete rules match documents: a member sees Delete only on boards they
    created; the team owner sees it on all of them.
 
@@ -126,6 +126,64 @@ what makes the shared real-time board possible later.
 Mentions are stored as user ids sent by the picker, not parsed out of the
 text by the server — display names are ambiguous, ids are not. (Mention
 notifications arrive with Phase 7.)
+
+## Verify Phase 5 (real-time whiteboard + presence) — two-client test
+
+1. Window 1 (normal): log in as **User A**, open a team whiteboard.
+2. Window 2 (incognito): log in as **User B**, open the SAME whiteboard.
+   Each window now shows the other person's name badge next to "Live".
+3. Move your mouse over the canvas in one window — a labeled colored cursor
+   follows in the other window.
+4. **Draw at the same time**: A drags a rectangle while B draws with the pen.
+   When you release, each shape appears in the other window. Count the
+   shapes in both windows — same number, nothing lost, nothing duplicated.
+5. As B, take the eraser and click one of A's shapes — it disappears in both
+   windows at once.
+6. **Late joiner**: close window 2 entirely, draw two more shapes as A, then
+   reopen the board as B. B sees the complete current board immediately
+   (one snapshot on join — the server does not replay event history).
+7. As A, click **Clear board** — B's canvas empties too.
+8. Close BOTH windows, reopen the board: the last state is still there.
+   The server saves the live board to MongoDB a few seconds after each
+   change and immediately when the last person leaves.
+9. Log out and open a socket manually with a bad token (or just watch the
+   server logs): unauthenticated sockets are refused at the handshake.
+
+### How the whiteboard stays consistent (interview answer)
+
+Every shape has a **client-generated unique id**. Concurrent edits either
+touch different ids (both survive) or the same id (**last write wins**).
+That's enough for drawings because shapes are independent objects — there is
+no ordering to preserve *inside* a shape. Text is different: concurrent
+inserts into the same character sequence conflict, which is why the document
+editor (Phase 6) uses a CRDT (Yjs) and the whiteboard deliberately does not.
+Cursor positions are throttled to ~50 ms and sent as volatile packets — a
+lost cursor update is instantly superseded by the next one.
+
+## Deploy
+
+The backend needs a host that keeps one process alive (WebSockets), so it
+goes on **Render**; the static React build goes on **Vercel**. Both free.
+
+1. **Push to GitHub**: create an empty repo, then
+   `git remote add origin <repo-url> && git push -u origin main`.
+2. **MongoDB Atlas**: in *Network Access*, allow `0.0.0.0/0` (Render's free
+   tier has no fixed IPs).
+3. **Render** (render.com → New → Web Service, pick the repo):
+   - Root directory: `server` — Build: `npm install` — Start: `npm start`
+   - Health check path: `/api/health`
+   - Environment variables: `MONGODB_URI`, `JWT_SECRET` (generate a fresh
+     one), `CLIENT_ORIGIN` (fill in after step 4). Render sets `PORT` itself.
+4. **Vercel** (vercel.com → Add New → Project, pick the repo):
+   - Root directory: `client` (framework preset: Vite)
+   - Environment variable: `VITE_SERVER_URL` = the Render URL from step 3
+     (e.g. `https://collabspace-api.onrender.com` — no trailing slash).
+5. Back on Render, set `CLIENT_ORIGIN` to the exact Vercel URL
+   (e.g. `https://collabspace.vercel.app` — no trailing slash) and redeploy.
+6. Open the Vercel URL, register, and run the two-client test above.
+
+Free-tier caveat: Render spins the server down after ~15 idle minutes; the
+first request afterwards takes ~30–60 s while it cold-starts.
 
 ### RBAC design in one line
 
