@@ -94,6 +94,21 @@ cd client && npm run dev
    `(documentId, teamId)` together, so a document can never be reached
    through a team it doesn't belong to.
 
+## Verify Phase 3 (whiteboard CRUD)
+
+1. On a team page, create a whiteboard and open it.
+2. Draw with each tool: **pen** (freehand), **rect** and **circle** (click and
+   drag), then switch to **eraser** and click a shape — the whole shape
+   disappears (shapes are deleted as units, never partially erased).
+3. "Unsaved changes" appears — click **Save**, then reload the page. Every
+   shape comes back exactly where it was (elements persisted to MongoDB).
+4. Delete rules match documents: a member sees Delete only on boards they
+   created; the team owner sees it on all of them.
+
+The canvas is a fixed 1000×600 logical space rather than stretching to the
+window, so saved coordinates mean the same thing on every screen — which is
+what makes the shared real-time board possible later.
+
 ### RBAC design in one line
 
 The role lives on the **Membership** (user–team pair), not on the User —

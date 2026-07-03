@@ -5,6 +5,7 @@ import DocumentPage from "./pages/DocumentPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import TeamPage from "./pages/TeamPage";
+import WhiteboardPage from "./pages/WhiteboardPage";
 
 export default function App() {
   return (
@@ -32,6 +33,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DocumentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/teams/:teamId/whiteboards/:whiteboardId"
+        element={
+          <ProtectedRoute>
+            <WhiteboardPage />
           </ProtectedRoute>
         }
       />
