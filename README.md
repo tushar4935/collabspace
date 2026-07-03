@@ -80,6 +80,20 @@ cd client && npm run dev
 6. Reload any page while logged in — the session survives (token restore),
    and visiting `/` logged out redirects to `/login`.
 
+## Verify Phase 2 (document CRUD)
+
+1. As **User A** (team owner), open a team and create a document. It appears
+   in the Documents list; click it to open the document page and rename it.
+2. As **User B** (member of the same team, incognito window), open the team —
+   the document is there. Create a second document as B.
+3. As B, note there is **no Delete button** on A's document (B is neither its
+   creator nor the team owner), but there is one on B's own document.
+4. As A (team owner), both documents show Delete. Delete B's document —
+   refresh B's team page and it is gone.
+5. Documents are team-scoped: the API looks up every document by
+   `(documentId, teamId)` together, so a document can never be reached
+   through a team it doesn't belong to.
+
 ### RBAC design in one line
 
 The role lives on the **Membership** (user–team pair), not on the User —

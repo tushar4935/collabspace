@@ -13,6 +13,9 @@ export default function TeamPage() {
   const [error, setError] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
+  const [documents, setDocuments] = useState([]);
+  const [newDocTitle, setNewDocTitle] = useState("");
+  const [docError, setDocError] = useState("");
 
   useEffect(() => {
     api
@@ -25,7 +28,35 @@ export default function TeamPage() {
       .catch((err) =>
         setError(err.response?.data?.message || "Could not load this team")
       );
+    api
+      .get(`/teams/${teamId}/documents`)
+      .then((res) => setDocuments(res.data.documents))
+      .catch(() => setDocError("Could not load documents"));
   }, [teamId]);
+
+  async function handleCreateDocument(e) {
+    e.preventDefault();
+    setDocError("");
+    try {
+      const res = await api.post(`/teams/${teamId}/documents`, {
+        title: newDocTitle,
+      });
+      setDocuments((prev) => [res.data.document, ...prev]);
+      setNewDocTitle("");
+    } catch (err) {
+      setDocError(err.response?.data?.message || "Could not create document");
+    }
+  }
+
+  async function handleDeleteDocument(documentId) {
+    setDocError("");
+    try {
+      await api.delete(`/teams/${teamId}/documents/${documentId}`);
+      setDocuments((prev) => prev.filter((d) => d.id !== documentId));
+    } catch (err) {
+      setDocError(err.response?.data?.message || "Could not delete document");
+    }
+  }
 
   async function handleAddMember(e) {
     e.preventDefault();
@@ -128,6 +159,60 @@ export default function TeamPage() {
             </form>
           )}
           {inviteError && <p className="text-sm text-red-400">{inviteError}</p>}
+        </section>
+
+        <section className="bg-gray-900 rounded-lg p-4 space-y-3">
+          <h2 className="text-white font-semibold text-sm">
+            Documents ({documents.length})
+          </h2>
+
+          <form onSubmit={handleCreateDocument} className="flex gap-2">
+            <input
+              type="text"
+              required
+              placeholder="New document title"
+              value={newDocTitle}
+              onChange={(e) => setNewDocTitle(e.target.value)}
+              className="flex-1 bg-gray-800 text-white rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded px-4 py-2 text-sm font-medium"
+            >
+              Create
+            </button>
+          </form>
+
+          {documents.length === 0 ? (
+            <p className="text-gray-500 text-sm">No documents yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-800">
+              {documents.map((doc) => {
+                // The delete button mirrors the server rule (creator or team
+                // owner) — the server enforces it regardless of what we render.
+                const canDelete = yourRole === "owner" || doc.createdBy === user.id;
+                return (
+                  <li key={doc.id} className="py-2 flex items-center justify-between">
+                    <Link
+                      to={`/teams/${teamId}/documents/${doc.id}`}
+                      className="text-sm text-indigo-300 hover:text-indigo-200 hover:underline"
+                    >
+                      {doc.title}
+                    </Link>
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDeleteDocument(doc.id)}
+                        className="text-xs text-red-400 hover:text-red-300"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {docError && <p className="text-sm text-red-400">{docError}</p>}
         </section>
       </main>
     </div>

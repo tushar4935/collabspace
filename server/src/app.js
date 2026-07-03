@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
 import teamRoutes from "./routes/teams.js";
+import documentRoutes from "./routes/documents.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
+app.use("/api/teams/:teamId/documents", documentRoutes);
 
 // Central error handler (Express 5 forwards rejected async handlers here).
 // Keeps every error response in the same JSON shape the client expects.
