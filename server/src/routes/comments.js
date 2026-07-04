@@ -6,6 +6,7 @@ import Membership from "../models/Membership.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
 import { logActivity } from "../utils/activity.js";
+import { notify } from "../utils/notify.js";
 
 // Mounted at /api/teams/:teamId/comments.
 const router = Router({ mergeParams: true });
@@ -84,6 +85,20 @@ router.post("/", async (req, res) => {
     req.userId,
     `commented on ${targetType} "${target.title}"`
   );
+
+  // Notify each mentioned member — but never notify yourself for your own
+  // @mention. targetType is "document"/"whiteboard"; the route uses the plural.
+  const authorName = comment.authorId.name;
+  const link = `/teams/${req.params.teamId}/${targetType}s/${targetId}`;
+  for (const mentionedId of validMentions) {
+    if (mentionedId.equals(req.userId)) continue;
+    await notify(mentionedId, {
+      type: "mention",
+      message: `${authorName} mentioned you in a comment on ${targetType} "${target.title}"`,
+      link,
+    });
+  }
+
   res.status(201).json({ comment: publicComment(comment) });
 });
 

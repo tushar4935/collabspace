@@ -6,6 +6,7 @@ import documentRoutes from "./routes/documents.js";
 import whiteboardRoutes from "./routes/whiteboards.js";
 import commentRoutes from "./routes/comments.js";
 import activityRoutes from "./routes/activity.js";
+import notificationRoutes from "./routes/notifications.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/teams/:teamId/documents", documentRoutes);
 app.use("/api/teams/:teamId/whiteboards", whiteboardRoutes);
 app.use("/api/teams/:teamId/comments", commentRoutes);
 app.use("/api/teams/:teamId/activity", activityRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Central error handler (Express 5 forwards rejected async handlers here).
 // Keeps every error response in the same JSON shape the client expects.

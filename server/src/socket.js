@@ -22,6 +22,18 @@ const liveBoards = new Map(); // boardId -> { elements: Map, users: Map, saveTim
 
 const SAVE_DEBOUNCE_MS = 3000;
 
+// Kept so routes (e.g. posting a comment with a mention) can push a live
+// notification to a specific user without knowing anything about sockets.
+let ioRef = null;
+
+// Deliver an event to one user across every tab/device they have open. Each
+// authenticated socket joins a personal room "user:<id>" on connect, so this
+// is a no-op if they're offline (they'll load it from MongoDB on next visit).
+export function emitToUser(userId, event, payload) {
+  if (!ioRef) return;
+  ioRef.to(`user:${userId}`).emit(event, payload);
+}
+
 async function getLiveBoard(boardId) {
   let live = liveBoards.get(boardId);
   if (!live) {
@@ -94,8 +106,14 @@ export function setupSocket(httpServer) {
     }
   });
 
+  ioRef = io;
+
   io.on("connection", (socket) => {
     console.log("user connected:", socket.id, socket.data.name);
+
+    // Personal room for user-targeted pushes (notifications). One user may
+    // have several sockets; all join the same room, so all tabs stay in sync.
+    socket.join(`user:${socket.data.userId}`);
 
     const roomOf = (boardId) => `board:${boardId}`;
 

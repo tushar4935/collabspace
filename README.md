@@ -237,6 +237,24 @@ goes on **Render**; the static React build goes on **Vercel**. Both free.
 Free-tier caveat: Render spins the server down after ~15 idle minutes; the
 first request afterwards takes ~30–60 s while it cold-starts.
 
+## Verify Phase 7 (notifications) — two-client test
+
+1. Window 1: log in as **User A** (team owner). Window 2 (incognito): log in
+   as **User B** (member of A's team). Both show a 🔔 bell in the navbar.
+2. As A, open a document and post a comment that `@`-mentions B. **Without
+   refreshing**, B's bell gains a red unread badge in real time.
+3. B clicks the bell → sees "A mentioned you in a comment on document …".
+   Clicking it marks it read and navigates straight to that document.
+4. As A, add a brand-new member by email while they're logged in — their bell
+   lights up with "A added you to …" linking to the team.
+5. Mention someone who is **offline**, then have them log in — the
+   notification is waiting in their bell (stored in MongoDB, not just pushed).
+6. Mention yourself — you get **no** notification.
+
+Notifications are user-scoped (they span all your teams). MongoDB is the
+durable record the bell loads on visit; Socket.io pushes new ones live to a
+per-user room (`user:<id>`) so every open tab updates at once.
+
 ### RBAC design in one line
 
 The role lives on the **Membership** (user–team pair), not on the User —

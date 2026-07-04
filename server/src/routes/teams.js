@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
 import { logActivity } from "../utils/activity.js";
+import { notify } from "../utils/notify.js";
 
 const router = Router();
 
@@ -81,6 +82,19 @@ router.post("/:teamId/members", requireMembership("owner"), async (req, res) => 
     role: "member",
   });
   await logActivity(req.params.teamId, req.userId, `added ${user.name} to the team`);
+
+  // Tell the added user in-app (they didn't ask to join — this is how they
+  // find out). The adder's name and the team name make the message useful.
+  const [adder, team] = await Promise.all([
+    User.findById(req.userId).select("name"),
+    Team.findById(req.params.teamId).select("name"),
+  ]);
+  await notify(user._id, {
+    type: "team_invite",
+    message: `${adder?.name ?? "Someone"} added you to "${team?.name ?? "a team"}"`,
+    link: `/teams/${req.params.teamId}`,
+  });
+
   res.status(201).json({
     member: {
       id: user._id,

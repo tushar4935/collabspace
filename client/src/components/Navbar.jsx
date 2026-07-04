@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -16,6 +17,7 @@ export default function Navbar() {
         CollabSpace
       </Link>
       <div className="flex items-center gap-4">
+        <NotificationBell />
         <span className="text-sm text-gray-400">{user?.name}</span>
         <button
           onClick={handleLogout}
