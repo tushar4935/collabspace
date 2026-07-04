@@ -11,6 +11,11 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.2",
+    "@tiptap/extension-collaboration": "^2.27.2",
+    "@tiptap/extension-collaboration-cursor": "^2.27.2",
+    "@tiptap/pm": "^2.27.2",
+    "@tiptap/react": "^2.27.2",
+    "@tiptap/starter-kit": "^2.27.2",
     "axios": "^1.18.1",
     "konva": "^10.3.0",
     "react": "^19.2.7",
@@ -18,9 +23,12 @@
     "react-konva": "^19.2.5",
     "react-router-dom": "^7.18.1",
     "socket.io-client": "^4.8.3",
-    "tailwindcss": "^4.3.2"
+    "tailwindcss": "^4.3.2",
+    "y-websocket": "^1.5.4",
+    "yjs": "^13.6.31"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",

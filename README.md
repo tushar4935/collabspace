@@ -10,9 +10,34 @@ comments with mentions, notifications, and version history.
 - **Backend:** Node, Express, Mongoose, Socket.io
 - **Database:** MongoDB Atlas (free tier)
 - **Auth:** JWT + bcrypt
-- **Real-time documents:** Yjs + y-websocket + Tiptap (exact pinned versions
-  will be listed here when the editor phase lands)
+- **Real-time documents:** Yjs (CRDT) + y-websocket + Tiptap
 - **Real-time whiteboard / presence / notifications:** Socket.io
+
+### Pinned collaboration versions
+
+The Yjs and Tiptap packages are version-sensitive: mixing Tiptap majors, or
+loading two copies of `yjs`, causes silent breakage. These are pinned and must
+move together. The entire Tiptap family is kept on **one identical version**.
+
+| Package | Version | Where |
+| --- | --- | --- |
+| `yjs` | 13.6.31 | client + server (must be a single deduped copy) |
+| `y-websocket` | 1.5.4 | client (`WebsocketProvider`) + server (`bin/utils`) |
+| `y-protocols` | 1.0.7 | server |
+| `ws` | 8.18.3 | server (WebSocket upgrade handling) |
+| `@tiptap/react` | 2.27.2 | client |
+| `@tiptap/pm` | 2.27.2 | client |
+| `@tiptap/starter-kit` | 2.27.2 | client |
+| `@tiptap/extension-collaboration` | 2.27.2 | client |
+| `@tiptap/extension-collaboration-cursor` | 2.27.2 | client |
+
+The collaboration extensions are on the same 2.27.2 as the rest of Tiptap.
+Verify a single Yjs after install: `cd client && npm ls yjs` should show every
+entry as `yjs@13.6.31 deduped`.
+
+See [docs/collaborative-editor.md](docs/collaborative-editor.md) for a
+plain-English explanation of why naive broadcast loses text, how the CRDT fixes
+it, how state is persisted/restored, and the failure modes.
 
 ## Architecture note
 
@@ -159,6 +184,33 @@ inserts into the same character sequence conflict, which is why the document
 editor (Phase 6) uses a CRDT (Yjs) and the whiteboard deliberately does not.
 Cursor positions are throttled to ~50 ms and sent as volatile packets — a
 lost cursor update is instantly superseded by the next one.
+
+## Verify Phase 6 (collaborative document editor) — two-client test
+
+1. Window 1 (normal): log in as **User A**, open a document. You get a
+   rich-text editor with a toolbar (bold, italic, H1/H2, lists, code) and a
+   green "Live" indicator.
+2. Window 2 (incognito): log in as **User B**, open the SAME document.
+3. Type in one window — the text appears in the other as you type. Each window
+   shows the other person's **name in the toolbar** and their **colored caret**
+   moving through the text.
+4. **Type at the same time**, both of you, in the same paragraph. Nothing is
+   lost — both people's characters survive and both windows show identical
+   text. (This is the case naive whole-document broadcast would silently
+   overwrite; see the explainer.)
+5. Format some text (bold, a heading, a bullet list) — the formatting appears
+   for the other person too.
+6. Close BOTH windows, then reopen the document: your content and formatting
+   are still there (persisted to MongoDB and reloaded on open).
+
+### Why this needs a CRDT (interview answer)
+
+Two people typing into the same sentence produce inserts at overlapping
+positions; last-write-wins would drop one person's characters. Yjs is a CRDT:
+it gives every character a stable id so concurrent inserts **merge**
+deterministically instead of overwriting. That's why the editor uses Yjs while
+the whiteboard (independent shapes) can safely use last-write-wins. Full
+explanation: [docs/collaborative-editor.md](docs/collaborative-editor.md).
 
 ## Deploy
 

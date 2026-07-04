@@ -71,6 +71,11 @@ function scheduleSave(boardId) {
 export function setupSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: { origin: process.env.CLIENT_ORIGIN },
+    // We share this http server with y-websocket (see yjs.js). By default
+    // Socket.io destroys any upgrade whose path isn't "/socket.io/" — which
+    // would kill the "/yjs/" handshakes. Turn that off so the two coexist;
+    // each side's upgrade handler simply ignores paths that aren't its own.
+    destroyUpgrade: false,
   });
 
   // Sockets authenticate exactly like HTTP requests do: the client sends its

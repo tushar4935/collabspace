@@ -1,15 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
 import { api } from "../api";
+import CollaborativeEditor from "../components/CollaborativeEditor";
 import CommentsSection from "../components/CommentsSection";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
+
+// Browsers can't set headers on a WebSocket, so y-websocket connects over
+// ws(s):// — derive that from the http(s):// API URL.
+const WS_BASE = import.meta.env.VITE_SERVER_URL.replace(/^http/, "ws");
 
 export default function DocumentPage() {
   const { teamId, documentId } = useParams();
+  const { user } = useAuth();
   const [doc, setDoc] = useState(null);
   const [error, setError] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  // The Yjs doc + provider are created in an effect (not render) so React's
+  // StrictMode double-mount tears the first pair down cleanly instead of
+  // leaking two live WebSocket connections.
+  const [collab, setCollab] = useState(null);
 
   useEffect(() => {
     api
@@ -19,6 +32,21 @@ export default function DocumentPage() {
         setError(err.response?.data?.message || "Could not load this document")
       );
   }, [teamId, documentId]);
+
+  useEffect(() => {
+    const ydoc = new Y.Doc();
+    // roomname = documentId; the server maps it to the Document and checks
+    // membership. The token rides as a query param for the handshake auth.
+    const provider = new WebsocketProvider(`${WS_BASE}/yjs`, documentId, ydoc, {
+      params: { token: localStorage.getItem("token") },
+    });
+    setCollab({ ydoc, provider });
+    return () => {
+      provider.destroy();
+      ydoc.destroy();
+      setCollab(null);
+    };
+  }, [documentId]);
 
   async function handleRename(e) {
     e.preventDefault();
@@ -91,14 +119,17 @@ export default function DocumentPage() {
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 
-        {/* Placeholder body — the real-time Yjs + Tiptap editor lands in a
-            later phase and replaces this block. */}
-        <section className="bg-gray-900 rounded-lg p-6 min-h-64">
-          <p className="text-gray-500 text-sm">
-            The collaborative editor arrives in Phase 6. For now this page just
-            proves the document exists, loads, and can be renamed.
-          </p>
-        </section>
+        {collab ? (
+          <CollaborativeEditor
+            ydoc={collab.ydoc}
+            provider={collab.provider}
+            userName={user.name}
+          />
+        ) : (
+          <section className="bg-gray-900 rounded-lg p-6 min-h-64">
+            <p className="text-gray-500 text-sm">Connecting to the editor…</p>
+          </section>
+        )}
 
         <CommentsSection
           teamId={teamId}
