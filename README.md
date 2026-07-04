@@ -255,6 +255,28 @@ Notifications are user-scoped (they span all your teams). MongoDB is the
 durable record the bell loads on visit; Socket.io pushes new ones live to a
 per-user room (`user:<id>`) so every open tab updates at once.
 
+## Verify Phase 8 (document version history)
+
+1. Open a document and type some text. In the editor header, click
+   **Save version** and give it a name (e.g. "draft 1").
+2. Change the text, click **Save version** again ("draft 2"). Click
+   **History** — both versions are listed, newest first, with who saved them.
+3. Click **Restore** on "draft 1". Confirm the prompt. The editor content
+   snaps back to the draft-1 text — and if a second window has the same
+   document open, it updates there too (restore writes through the shared
+   Yjs doc).
+4. Open **History** again: a new "Auto-saved before restore …" version now
+   sits on top. Restore *that* to undo the restore — nothing is ever lost.
+
+### How restore works with a live CRDT (interview answer)
+
+A version is a snapshot of the document content saved as ProseMirror JSON.
+Restoring doesn't bypass collaboration: the client loads the snapshot back
+into the editor with `setContent()`, and because the editor is bound to the
+shared Yjs document, that replacement propagates to everyone editing and is
+persisted by the normal save path. Restore always saves the current content
+as a new version first, so it's reversible.
+
 ### RBAC design in one line
 
 The role lives on the **Membership** (user–team pair), not on the User —

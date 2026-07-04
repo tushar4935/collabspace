@@ -7,6 +7,7 @@ import whiteboardRoutes from "./routes/whiteboards.js";
 import commentRoutes from "./routes/comments.js";
 import activityRoutes from "./routes/activity.js";
 import notificationRoutes from "./routes/notifications.js";
+import versionRoutes from "./routes/versions.js";
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/teams/:teamId/documents", documentRoutes);
+app.use("/api/teams/:teamId/documents/:documentId/versions", versionRoutes);
 app.use("/api/teams/:teamId/whiteboards", whiteboardRoutes);
 app.use("/api/teams/:teamId/comments", commentRoutes);
 app.use("/api/teams/:teamId/activity", activityRoutes);

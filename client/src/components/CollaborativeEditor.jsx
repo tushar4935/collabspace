@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
+import VersionHistory from "./VersionHistory";
 
 // A stable color per user name, so each person shows up the same color in
 // everyone's caret list without any server coordination.
@@ -30,7 +31,7 @@ function ToolbarButton({ active, onClick, children }) {
 // Receives an already-connected Yjs doc + provider from DocumentPage. Keeping
 // the hook in its own component means the provider is created once (in an
 // effect) before this ever mounts — the editor always has a live doc.
-export default function CollaborativeEditor({ ydoc, provider, userName }) {
+export default function CollaborativeEditor({ ydoc, provider, userName, teamId, documentId }) {
   const [status, setStatus] = useState(provider.wsconnected ? "connected" : "connecting");
   const [peers, setPeers] = useState([]);
 
@@ -144,6 +145,7 @@ export default function CollaborativeEditor({ ydoc, provider, userName }) {
           <span className={status === "connected" ? "text-green-400" : "text-yellow-400"}>
             ● {status === "connected" ? "Live" : "Connecting…"}
           </span>
+          <VersionHistory editor={editor} teamId={teamId} documentId={documentId} />
         </div>
       </div>
 

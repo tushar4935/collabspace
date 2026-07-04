@@ -124,6 +124,8 @@ export default function DocumentPage() {
             ydoc={collab.ydoc}
             provider={collab.provider}
             userName={user.name}
+            teamId={teamId}
+            documentId={documentId}
           />
         ) : (
           <section className="bg-gray-900 rounded-lg p-6 min-h-64">
