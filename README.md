@@ -266,6 +266,9 @@ goes on **Render**; the static React build goes on **Vercel**. Both free.
    - Root directory: `client` (framework preset: Vite)
    - Environment variable: `VITE_SERVER_URL` = the Render URL from step 3
      (e.g. `https://collabspace-api.onrender.com` — no trailing slash).
+   - `client/vercel.json` adds an SPA fallback rewrite so deep links like
+     `/teams/:id/documents/:id` still load `index.html` after a refresh
+     (React Router owns routing on the client). No extra config needed.
 5. Back on Render, set `CLIENT_ORIGIN` to the exact Vercel URL
    (e.g. `https://collabspace.vercel.app` — no trailing slash) and redeploy.
 6. **Seed the deployed database** (optional): locally, set `MONGODB_URI` in
