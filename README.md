@@ -4,11 +4,12 @@ A real-time team collaboration platform: teams, shared rich-text documents
 (Yjs + Tiptap), shared whiteboards (Socket.io + react-konva), presence,
 comments with mentions, notifications, and version history.
 
-**Live demo:** _add your Vercel URL here after deploying_ ·
-**API:** _add your Render URL here_
+**Live demo:** https://collabspace-mu-sooty.vercel.app ·
+**API:** https://collabspace-6vkk.onrender.com
 
-After deploying (see [Deploy](#deploy)) and seeding, log in with
-`ava@collabspace.dev` / `password123` to explore a pre-populated team.
+Log in with `ava@collabspace.dev` / `password123` to explore a pre-populated
+team (or register your own). The demo data is created by the
+[seed script](#seed-the-database).
 
 ## Tech stack
 
