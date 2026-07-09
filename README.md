@@ -4,6 +4,12 @@ A real-time team collaboration platform: teams, shared rich-text documents
 (Yjs + Tiptap), shared whiteboards (Socket.io + react-konva), presence,
 comments with mentions, notifications, and version history.
 
+**Live demo:** _add your Vercel URL here after deploying_ ·
+**API:** _add your Render URL here_
+
+After deploying (see [Deploy](#deploy)) and seeding, log in with
+`ava@collabspace.dev` / `password123` to explore a pre-populated team.
+
 ## Tech stack
 
 - **Frontend:** React (Vite), Tailwind CSS, React Router, Axios, Context API
@@ -71,10 +77,40 @@ cd ../client && npm install
 | `server/.env` | `JWT_SECRET`    | Secret for signing JWTs (`openssl rand -hex 32`) |
 | `client/.env` | `VITE_SERVER_URL` | Base URL of the Express/Socket.io server |
 
-## Run locally
+## Seed the database
+
+Populate a fresh database with a demo team, three users, a document that
+already has text, and a whiteboard that already has shapes:
 
 ```bash
-# Terminal 1 — server (Express + Socket.io on http://localhost:4000)
+cd server && npm run seed
+```
+
+> ⚠️ **Destructive:** the script wipes every collection first so re-running
+> always yields the same known state. Run it against your own database only.
+
+It prints the login credentials. All three accounts share the password
+`password123`:
+
+| Email                    | Role in "Product Team" |
+| ------------------------ | ---------------------- |
+| `ava@collabspace.dev`    | owner                  |
+| `ben@collabspace.dev`    | member                 |
+| `cara@collabspace.dev`   | member                 |
+
+The seeded document's `yjsState` is a real encoded Yjs update (not a
+placeholder), so it opens straight into the collaborative editor with content;
+its first version is saved so **History** isn't empty. To seed the deployed
+database, run the same command once with `MONGODB_URI` pointed at Atlas.
+
+## Run locally
+
+Only **two** processes are needed. y-websocket is **not** a separate service —
+it shares the server's single HTTP port (see [Architecture note](#architecture-note)),
+so starting the server starts the document real-time transport too.
+
+```bash
+# Terminal 1 — server (Express + Socket.io + y-websocket on http://localhost:4000)
 cd server && npm run dev
 
 # Terminal 2 — client (Vite dev server on http://localhost:5173)
@@ -232,10 +268,26 @@ goes on **Render**; the static React build goes on **Vercel**. Both free.
      (e.g. `https://collabspace-api.onrender.com` — no trailing slash).
 5. Back on Render, set `CLIENT_ORIGIN` to the exact Vercel URL
    (e.g. `https://collabspace.vercel.app` — no trailing slash) and redeploy.
-6. Open the Vercel URL, register, and run the two-client test above.
+6. **Seed the deployed database** (optional): locally, set `MONGODB_URI` in
+   `server/.env` to the Atlas string and run `npm run seed`, or run the same
+   command in Render's *Shell* tab. Now you can log in with
+   `ava@collabspace.dev` / `password123`.
+7. Open the Vercel URL, register (or use a seeded account), and run the
+   two-client test above.
 
 Free-tier caveat: Render spins the server down after ~15 idle minutes; the
 first request afterwards takes ~30–60 s while it cold-starts.
+
+### Post-deploy checklist
+
+- [ ] `GET https://<render-url>/api/health` returns `{ "status": "ok" }`.
+- [ ] Register/login works on the Vercel URL (JWT flows over HTTPS).
+- [ ] Whiteboard shows a live peer badge + cursor in a second window
+      (Socket.io upgraded over `wss://`).
+- [ ] Document editor shows "Live" and merges concurrent typing
+      (y-websocket upgraded over `wss://` on the same host).
+- [ ] No CORS errors in the browser console → `CLIENT_ORIGIN` matches the
+      Vercel URL exactly (no trailing slash).
 
 ## Verify Phase 7 (notifications) — two-client test
 
