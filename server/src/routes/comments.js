@@ -8,13 +8,12 @@ import { requireMembership } from "../middleware/membership.js";
 import { logActivity } from "../utils/activity.js";
 import { notify } from "../utils/notify.js";
 
-// Mounted at /api/teams/:teamId/comments.
+// mounted at /api/teams/:teamId/comments
 const router = Router({ mergeParams: true });
 
 router.use(requireAuth, requireMembership());
 
-// A comment target must belong to the team in the URL — this is the same
-// (id, teamId) scoping rule the document/whiteboard routes use.
+// the target must belong to the team in the url
 async function loadTarget(teamId, targetType, targetId) {
   const Model = targetType === "document" ? Document : Whiteboard;
   return Model.findOne({ _id: targetId, teamId });
@@ -35,7 +34,7 @@ function publicComment(comment) {
   };
 }
 
-// POST /api/teams/:teamId/comments — comment on a document or whiteboard.
+// POST — comment on a document or whiteboard
 router.post("/", async (req, res) => {
   const { content, targetType, targetId, parentId, mentions } = req.body;
   if (!content?.trim()) {
@@ -49,8 +48,7 @@ router.post("/", async (req, res) => {
     return res.status(404).json({ message: "Comment target not found in this team" });
   }
 
-  // Replies stay one level deep: replying to a reply attaches to that
-  // reply's top-level parent, so threads can't nest indefinitely.
+  // replies stay one level deep: a reply to a reply attaches to the top-level parent
   let resolvedParentId = null;
   if (parentId) {
     const parent = await Comment.findOne({ _id: parentId, targetType, targetId });
@@ -60,8 +58,7 @@ router.post("/", async (req, res) => {
     resolvedParentId = parent.parentId ?? parent._id;
   }
 
-  // Keep only mentions that are actually members of this team — the client
-  // sends ids, but the server decides what counts.
+  // only keep mentions that are actually members of this team
   let validMentions = [];
   if (Array.isArray(mentions) && mentions.length > 0) {
     const memberships = await Membership.find({
@@ -86,8 +83,7 @@ router.post("/", async (req, res) => {
     `commented on ${targetType} "${target.title}"`
   );
 
-  // Notify each mentioned member — but never notify yourself for your own
-  // @mention. targetType is "document"/"whiteboard"; the route uses the plural.
+  // notify mentioned members (not yourself)
   const authorName = comment.authorId.name;
   const link = `/teams/${req.params.teamId}/${targetType}s/${targetId}`;
   for (const mentionedId of validMentions) {
@@ -102,8 +98,7 @@ router.post("/", async (req, res) => {
   res.status(201).json({ comment: publicComment(comment) });
 });
 
-// GET /api/teams/:teamId/comments?targetType=...&targetId=... — all comments
-// on one target, oldest first (the client groups replies under parents).
+// GET ?targetType=...&targetId=... — comments on one target, oldest first
 router.get("/", async (req, res) => {
   const { targetType, targetId } = req.query;
   if (!["document", "whiteboard"].includes(targetType)) {
@@ -119,11 +114,10 @@ router.get("/", async (req, res) => {
   res.json({ comments: comments.map(publicComment), yourRole: req.membership.role });
 });
 
-// DELETE /api/teams/:teamId/comments/:commentId — author or team owner.
+// DELETE /:commentId — author or team owner only
 router.delete("/:commentId", async (req, res) => {
   const comment = await Comment.findById(req.params.commentId);
-  // The comment itself has no teamId, so team scoping goes through its
-  // target: no target in this team means this comment isn't ours to touch.
+  // comments have no teamId, so team scoping goes through the target
   const target = comment
     ? await loadTarget(req.params.teamId, comment.targetType, comment.targetId)
     : null;
@@ -137,8 +131,7 @@ router.delete("/:commentId", async (req, res) => {
       .status(403)
       .json({ message: "Only the comment's author or the team owner can delete it" });
   }
-  // Deleting a top-level comment takes its replies with it — orphaned
-  // replies would render parentless and be undeletable through the UI.
+  // deleting a top-level comment also deletes its replies
   await Comment.deleteMany({ $or: [{ _id: comment._id }, { parentId: comment._id }] });
   res.json({ ok: true });
 });

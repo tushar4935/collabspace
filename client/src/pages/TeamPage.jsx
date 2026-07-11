@@ -4,8 +4,7 @@ import { api } from "../api";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 
-// Documents and whiteboards have identical list behavior (create, open,
-// creator-or-owner delete), so one section component serves both.
+// one list section component serves both documents and whiteboards
 function ItemSection({ label, items, error, onCreate, onDelete, linkFor, canDelete }) {
   const [newTitle, setNewTitle] = useState("");
 
@@ -107,8 +106,7 @@ export default function TeamPage() {
       .catch(() => {});
   }, [teamId]);
 
-  // The delete buttons mirror the server rule (creator or team owner) —
-  // the server enforces it regardless of what we render.
+  // mirrors the server rule (creator or team owner)
   const canDeleteItem = (item) =>
     yourRole === "owner" || item.createdBy === user.id;
 

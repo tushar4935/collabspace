@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 
-// Comment thread for a document or whiteboard. Mentions work by picking a
-// member from a dropdown (triggered by typing "@"): the picked user's id is
-// recorded alongside the text, so the server never has to guess who "@Sam"
-// is by parsing names.
+// comment thread for a document or whiteboard. mention ids are recorded
+// when picked from the dropdown, not parsed out of the text.
 export default function CommentsSection({ teamId, targetType, targetId }) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
@@ -34,9 +32,9 @@ export default function CommentsSection({ teamId, targetType, targetId }) {
   function handleTextChange(e) {
     const value = e.target.value;
     setText(value);
-    // A fresh "@" at the end of the text opens the member picker.
+    // "@" at the end of the text opens the member picker
     setShowMentionList(value.endsWith("@"));
-    // If a mentioned name was edited out of the text, drop its id too.
+    // drop mention ids whose name was edited out of the text
     setMentions((prev) =>
       prev.filter((id) => {
         const m = members.find((mem) => mem.id === id);
@@ -75,7 +73,7 @@ export default function CommentsSection({ teamId, targetType, targetId }) {
     setError("");
     try {
       await api.delete(`/teams/${teamId}/comments/${commentId}`);
-      // The server cascades replies of a deleted top-level comment.
+      // server cascades replies of a deleted top-level comment
       setComments((prev) =>
         prev.filter((c) => c.id !== commentId && c.parentId !== commentId)
       );
@@ -84,7 +82,7 @@ export default function CommentsSection({ teamId, targetType, targetId }) {
     }
   }
 
-  // Bold the @Name of every team member that appears in the text.
+  // highlight @Name for team members that appear in the text
   function renderContent(content) {
     const names = members.map((m) => m.name).filter(Boolean);
     if (names.length === 0) return content;

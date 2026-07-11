@@ -4,31 +4,14 @@ import User from "./models/User.js";
 import Membership from "./models/Membership.js";
 import Whiteboard from "./models/Whiteboard.js";
 
-// ---------------------------------------------------------------------------
-// Live whiteboard state, kept in server memory while a board has users.
-//
-// Why in memory: the board someone joins must reflect UNSAVED strokes made
-// seconds ago by others. Reading MongoDB on every event would be slow and
-// racy; instead the server holds the authoritative copy and MongoDB is the
-// durable snapshot behind it.
-//
-// elements is a Map keyed by shape id — that is the whole conflict strategy.
-// Two users acting at once either touch DIFFERENT ids (both survive — nothing
-// is lost) or the SAME id (the later event wins). Last-write-wins per shape
-// is enough for drawings because shapes are independent objects; text is the
-// thing that needs a CRDT, and that's Yjs in the editor phase, not here.
-// ---------------------------------------------------------------------------
+// live board state while a board has users; mongo holds the saved snapshot
 const liveBoards = new Map(); // boardId -> { elements: Map, users: Map, saveTimer, dirty }
 
 const SAVE_DEBOUNCE_MS = 3000;
 
-// Kept so routes (e.g. posting a comment with a mention) can push a live
-// notification to a specific user without knowing anything about sockets.
 let ioRef = null;
 
-// Deliver an event to one user across every tab/device they have open. Each
-// authenticated socket joins a personal room "user:<id>" on connect, so this
-// is a no-op if they're offline (they'll load it from MongoDB on next visit).
+// push an event to every open tab/device of one user
 export function emitToUser(userId, event, payload) {
   if (!ioRef) return;
   ioRef.to(`user:${userId}`).emit(event, payload);
@@ -61,9 +44,7 @@ async function persistBoard(boardId) {
   );
 }
 
-// Persistence is debounced instead of per-event: a pen drawing session fires
-// hundreds of events, and MongoDB only needs the state every few seconds —
-// the in-memory copy is what live users actually read.
+// debounced: drawing fires lots of events, no need to hit mongo on each one
 function scheduleSave(boardId) {
   const live = liveBoards.get(boardId);
   if (!live) return;
@@ -75,7 +56,7 @@ function scheduleSave(boardId) {
       await persistBoard(boardId);
     } catch (err) {
       console.error("board save failed:", err.message);
-      live.dirty = true; // try again on the next event or on room-empty
+      live.dirty = true; // retry on next event or on room-empty
     }
   }, SAVE_DEBOUNCE_MS);
 }
@@ -83,16 +64,11 @@ function scheduleSave(boardId) {
 export function setupSocket(httpServer) {
   const io = new Server(httpServer, {
     cors: { origin: process.env.CLIENT_ORIGIN },
-    // We share this http server with y-websocket (see yjs.js). By default
-    // Socket.io destroys any upgrade whose path isn't "/socket.io/" — which
-    // would kill the "/yjs/" handshakes. Turn that off so the two coexist;
-    // each side's upgrade handler simply ignores paths that aren't its own.
+    // /yjs shares this http server — don't destroy its upgrade requests
     destroyUpgrade: false,
   });
 
-  // Sockets authenticate exactly like HTTP requests do: the client sends its
-  // JWT in the handshake, and an invalid token never gets a connection at
-  // all. Without this, anyone could open a socket and join any board room.
+  // jwt auth on the handshake
   io.use(async (socket, next) => {
     try {
       const payload = jwt.verify(socket.handshake.auth?.token, process.env.JWT_SECRET);
@@ -111,8 +87,7 @@ export function setupSocket(httpServer) {
   io.on("connection", (socket) => {
     console.log("user connected:", socket.id, socket.data.name);
 
-    // Personal room for user-targeted pushes (notifications). One user may
-    // have several sockets; all join the same room, so all tabs stay in sync.
+    // personal room for notifications
     socket.join(`user:${socket.data.userId}`);
 
     const roomOf = (boardId) => `board:${boardId}`;
@@ -127,28 +102,22 @@ export function setupSocket(httpServer) {
       live.users.delete(socket.id);
       socket.to(roomOf(boardId)).emit("user-left", { socketId: socket.id });
       if (live.users.size === 0) {
-        // Last one out: flush to MongoDB and drop the in-memory copy, so an
-        // idle server holds no board state and a later join reloads fresh.
+        // last user out: flush and drop the in-memory copy
         if (live.saveTimer) clearTimeout(live.saveTimer);
         try {
           await persistBoard(boardId);
         } catch (err) {
           console.error("final board save failed:", err.message);
-          return; // keep the live copy so the strokes aren't lost
+          return; // keep it in memory so nothing is lost
         }
         liveBoards.delete(boardId);
       }
     }
 
-    // The ack callback carries the ONE snapshot a late joiner gets. Replaying
-    // the event history instead would mean storing every event forever and
-    // re-running erases/clears on join — the current state is all that
-    // matters, and the snapshot IS the current state.
+    // membership is checked once here; later events only check the room
     socket.on("join-board", async ({ boardId }, ack) => {
       try {
         const live = await getLiveBoard(boardId);
-        // Board membership is checked HERE, once, at join — every later
-        // event only needs the cheap "did you join this room?" check below.
         const membership = live
           ? await Membership.findOne({
               userId: socket.data.userId,
@@ -158,7 +127,7 @@ export function setupSocket(httpServer) {
         if (!membership) {
           return ack?.({ ok: false, message: "You do not have access to this board" });
         }
-        await leaveBoard(); // a socket views one board at a time
+        await leaveBoard(); // one board per socket
         socket.data.boardId = boardId;
         socket.join(roomOf(boardId));
         const user = { socketId: socket.id, userId: socket.data.userId, name: socket.data.name };
@@ -181,14 +150,12 @@ export function setupSocket(httpServer) {
 
     socket.on("leave-board", leaveBoard);
 
-    // Events below trust the join-time membership check: if this socket is
-    // not in the board it claims to draw on, the event is dropped.
     function liveBoardFor(boardId) {
       if (socket.data.boardId !== boardId) return null;
       return liveBoards.get(boardId) ?? null;
     }
 
-    // Upsert by shape id = last write wins for that shape.
+    // upsert by shape id — last write wins per shape
     socket.on("draw", ({ boardId, element }) => {
       const live = liveBoardFor(boardId);
       if (!live || !element?.id) return;
@@ -213,8 +180,7 @@ export function setupSocket(httpServer) {
       socket.to(roomOf(boardId)).emit("clear");
     });
 
-    // volatile: a dropped cursor position is instantly replaced by the next
-    // one, so it's never worth buffering or retransmitting.
+    // volatile: a stale cursor position isn't worth retransmitting
     socket.on("cursor-move", ({ boardId, x, y }) => {
       if (socket.data.boardId !== boardId) return;
       socket.to(roomOf(boardId)).volatile.emit("cursor-move", {

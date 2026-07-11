@@ -9,10 +9,9 @@ import { notify } from "../utils/notify.js";
 
 const router = Router();
 
-// Everything under /api/teams requires a logged-in user.
 router.use(requireAuth);
 
-// POST /api/teams — create a team; the creator becomes its owner.
+// POST /api/teams — create a team; creator becomes owner
 router.post("/", async (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) {
@@ -24,7 +23,7 @@ router.post("/", async (req, res) => {
   res.status(201).json({ team: { id: team._id, name: team.name } });
 });
 
-// GET /api/teams — all teams the current user belongs to, with their role in each.
+// GET /api/teams — teams the current user belongs to
 router.get("/", async (req, res) => {
   const memberships = await Membership.find({ userId: req.userId }).populate("teamId");
   const teams = memberships
@@ -33,7 +32,7 @@ router.get("/", async (req, res) => {
   res.json({ teams });
 });
 
-// GET /api/teams/:teamId — team details + member list (any member of the team).
+// GET /api/teams/:teamId — team details + member list
 router.get("/:teamId", requireMembership(), async (req, res) => {
   const team = await Team.findById(req.params.teamId);
   if (!team) {
@@ -59,7 +58,7 @@ router.get("/:teamId", requireMembership(), async (req, res) => {
   });
 });
 
-// POST /api/teams/:teamId/members — add a registered user by email (owner only).
+// POST /api/teams/:teamId/members — add a user by email (owner only)
 router.post("/:teamId/members", requireMembership("owner"), async (req, res) => {
   const { email } = req.body;
   if (!email?.trim()) {
@@ -83,8 +82,7 @@ router.post("/:teamId/members", requireMembership("owner"), async (req, res) => 
   });
   await logActivity(req.params.teamId, req.userId, `added ${user.name} to the team`);
 
-  // Tell the added user in-app (they didn't ask to join — this is how they
-  // find out). The adder's name and the team name make the message useful.
+  // notify the added user in-app
   const [adder, team] = await Promise.all([
     User.findById(req.userId).select("name"),
     Team.findById(req.params.teamId).select("name"),
@@ -106,7 +104,7 @@ router.post("/:teamId/members", requireMembership("owner"), async (req, res) => 
   });
 });
 
-// DELETE /api/teams/:teamId/members/:userId — remove a member (owner only).
+// DELETE /api/teams/:teamId/members/:userId — remove a member (owner only)
 router.delete(
   "/:teamId/members/:userId",
   requireMembership("owner"),

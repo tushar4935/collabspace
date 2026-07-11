@@ -8,8 +8,7 @@ import CommentsSection from "../components/CommentsSection";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 
-// Browsers can't set headers on a WebSocket, so y-websocket connects over
-// ws(s):// — derive that from the http(s):// API URL.
+// derive ws(s):// from the http(s):// api url
 const WS_BASE = import.meta.env.VITE_SERVER_URL.replace(/^http/, "ws");
 
 export default function DocumentPage() {
@@ -19,9 +18,7 @@ export default function DocumentPage() {
   const [error, setError] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
-  // The Yjs doc + provider are created in an effect (not render) so React's
-  // StrictMode double-mount tears the first pair down cleanly instead of
-  // leaking two live WebSocket connections.
+  // created in an effect so StrictMode's double-mount cleans up the first pair
   const [collab, setCollab] = useState(null);
 
   useEffect(() => {
@@ -35,8 +32,7 @@ export default function DocumentPage() {
 
   useEffect(() => {
     const ydoc = new Y.Doc();
-    // roomname = documentId; the server maps it to the Document and checks
-    // membership. The token rides as a query param for the handshake auth.
+    // room name = documentId; token goes as a query param for handshake auth
     const provider = new WebsocketProvider(`${WS_BASE}/yjs`, documentId, ydoc, {
       params: { token: localStorage.getItem("token") },
     });

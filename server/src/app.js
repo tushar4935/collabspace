@@ -27,8 +27,7 @@ app.use("/api/teams/:teamId/comments", commentRoutes);
 app.use("/api/teams/:teamId/activity", activityRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// Central error handler (Express 5 forwards rejected async handlers here).
-// Keeps every error response in the same JSON shape the client expects.
+// central error handler (express 5 forwards rejected async handlers here)
 app.use((err, req, res, next) => {
   if (err.name === "CastError") {
     return res.status(400).json({ message: "Invalid id" });

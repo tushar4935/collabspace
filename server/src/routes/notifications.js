@@ -2,8 +2,7 @@ import { Router } from "express";
 import Notification from "../models/Notification.js";
 import { requireAuth } from "../middleware/auth.js";
 
-// Mounted at /api/notifications. These are user-scoped, not team-scoped: a
-// person's notifications span every team they belong to.
+// user-scoped, not team-scoped
 const router = Router();
 
 router.use(requireAuth);
@@ -19,7 +18,7 @@ function publicNotification(n) {
   };
 }
 
-// GET /api/notifications — the current user's 50 newest, plus unread count.
+// GET — current user's 50 newest, plus unread count
 router.get("/", async (req, res) => {
   const notifications = await Notification.find({ userId: req.userId })
     .sort({ createdAt: -1 })
@@ -31,7 +30,7 @@ router.get("/", async (req, res) => {
   res.json({ notifications: notifications.map(publicNotification), unread });
 });
 
-// PATCH /api/notifications/read-all — mark every notification read.
+// PATCH /read-all — mark everything read
 router.patch("/read-all", async (req, res) => {
   await Notification.updateMany(
     { userId: req.userId, read: false },
@@ -40,8 +39,7 @@ router.patch("/read-all", async (req, res) => {
   res.json({ ok: true });
 });
 
-// PATCH /api/notifications/:id/read — mark one read. Scoped to the caller's
-// own notifications, so you can't touch someone else's by guessing an id.
+// PATCH /:id/read — mark one read (scoped to the caller's own)
 router.patch("/:id/read", async (req, res) => {
   const n = await Notification.findOneAndUpdate(
     { _id: req.params.id, userId: req.userId },

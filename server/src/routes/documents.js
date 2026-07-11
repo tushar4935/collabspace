@@ -5,15 +5,12 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
 import { logActivity } from "../utils/activity.js";
 
-// Mounted at /api/teams/:teamId/documents. mergeParams lets this router (and
-// the membership middleware) read :teamId from the mount path.
+// mounted at /api/teams/:teamId/documents; mergeParams exposes :teamId here
 const router = Router({ mergeParams: true });
 
-// Every document route requires a logged-in member of the team in the URL.
 router.use(requireAuth, requireMembership());
 
-// What the client sees. yjsState is binary editor state — never sent over
-// the REST API (the editor will sync it over its own WebSocket later).
+// yjsState is binary editor state — it never goes over the REST api
 function publicDocument(doc) {
   return {
     id: doc._id,
@@ -25,7 +22,7 @@ function publicDocument(doc) {
   };
 }
 
-// POST /api/teams/:teamId/documents — any member can create a document.
+// POST — create a document (any member)
 router.post("/", async (req, res) => {
   const { title } = req.body;
   if (!title?.trim()) {
@@ -40,7 +37,7 @@ router.post("/", async (req, res) => {
   res.status(201).json({ document: publicDocument(doc) });
 });
 
-// GET /api/teams/:teamId/documents — list the team's documents.
+// GET — list the team's documents
 router.get("/", async (req, res) => {
   const docs = await Document.find({ teamId: req.params.teamId }).sort({
     updatedAt: -1,
@@ -48,9 +45,7 @@ router.get("/", async (req, res) => {
   res.json({ documents: docs.map(publicDocument) });
 });
 
-// GET /api/teams/:teamId/documents/:documentId — one document.
-// Querying by BOTH ids means a document can only be reached through its own
-// team — you can't read another team's document by guessing its id.
+// GET /:documentId — matching both ids keeps docs scoped to their own team
 router.get("/:documentId", async (req, res) => {
   const doc = await Document.findOne({
     _id: req.params.documentId,
@@ -62,8 +57,7 @@ router.get("/:documentId", async (req, res) => {
   res.json({ document: publicDocument(doc) });
 });
 
-// PATCH /api/teams/:teamId/documents/:documentId — rename (any member).
-// Renaming is ordinary collaboration; only deletion is restricted.
+// PATCH /:documentId — rename (any member)
 router.patch("/:documentId", async (req, res) => {
   const { title } = req.body;
   if (!title?.trim()) {
@@ -80,7 +74,7 @@ router.patch("/:documentId", async (req, res) => {
   res.json({ document: publicDocument(doc) });
 });
 
-// DELETE /api/teams/:teamId/documents/:documentId — creator or team owner.
+// DELETE /:documentId — creator or team owner only
 router.delete("/:documentId", async (req, res) => {
   const doc = await Document.findOne({
     _id: req.params.documentId,
@@ -97,7 +91,7 @@ router.delete("/:documentId", async (req, res) => {
       .json({ message: "Only the document's creator or the team owner can delete it" });
   }
   await doc.deleteOne();
-  // A deleted document's comments have nowhere to display — drop them too.
+  // drop its comments too
   await Comment.deleteMany({ targetType: "document", targetId: doc._id });
   await logActivity(req.params.teamId, req.userId, `deleted document "${doc.title}"`);
   res.json({ ok: true });

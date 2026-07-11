@@ -5,13 +5,12 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
 import { logActivity } from "../utils/activity.js";
 
-// Mounted at /api/teams/:teamId/whiteboards — same shape as documents.js.
+// mounted at /api/teams/:teamId/whiteboards
 const router = Router({ mergeParams: true });
 
 router.use(requireAuth, requireMembership());
 
-// List items skip `elements` (boards can hold hundreds of shapes); the full
-// element array only travels when a single board is opened or saved.
+// list responses skip `elements` — the full array only travels for one board
 function boardSummary(board) {
   return {
     id: board._id,
@@ -23,7 +22,7 @@ function boardSummary(board) {
   };
 }
 
-// POST /api/teams/:teamId/whiteboards — any member can create a board.
+// POST — create a board (any member)
 router.post("/", async (req, res) => {
   const { title } = req.body;
   if (!title?.trim()) {
@@ -38,7 +37,7 @@ router.post("/", async (req, res) => {
   res.status(201).json({ whiteboard: boardSummary(board) });
 });
 
-// GET /api/teams/:teamId/whiteboards — list the team's boards (no elements).
+// GET — list the team's boards (no elements)
 router.get("/", async (req, res) => {
   const boards = await Whiteboard.find({ teamId: req.params.teamId })
     .select("-elements")
@@ -46,8 +45,7 @@ router.get("/", async (req, res) => {
   res.json({ whiteboards: boards.map(boardSummary) });
 });
 
-// GET /api/teams/:teamId/whiteboards/:whiteboardId — one board WITH elements.
-// Matching on both ids keeps boards reachable only through their own team.
+// GET /:whiteboardId — one board with elements, scoped to its own team
 router.get("/:whiteboardId", async (req, res) => {
   const board = await Whiteboard.findOne({
     _id: req.params.whiteboardId,
@@ -59,8 +57,7 @@ router.get("/:whiteboardId", async (req, res) => {
   res.json({ whiteboard: { ...boardSummary(board), elements: board.elements } });
 });
 
-// PATCH /api/teams/:teamId/whiteboards/:whiteboardId — rename and/or save
-// the canvas. Any member: drawing together is the point of the board.
+// PATCH /:whiteboardId — rename and/or save the canvas (any member)
 router.patch("/:whiteboardId", async (req, res) => {
   const { title, elements } = req.body;
   const update = {};
@@ -90,7 +87,7 @@ router.patch("/:whiteboardId", async (req, res) => {
   res.json({ whiteboard: boardSummary(board) });
 });
 
-// DELETE /api/teams/:teamId/whiteboards/:whiteboardId — creator or team owner.
+// DELETE /:whiteboardId — creator or team owner only
 router.delete("/:whiteboardId", async (req, res) => {
   const board = await Whiteboard.findOne({
     _id: req.params.whiteboardId,
@@ -107,7 +104,7 @@ router.delete("/:whiteboardId", async (req, res) => {
     });
   }
   await board.deleteOne();
-  // A deleted board's comments have nowhere to display — drop them too.
+  // drop its comments too
   await Comment.deleteMany({ targetType: "whiteboard", targetId: board._id });
   await logActivity(req.params.teamId, req.userId, `deleted whiteboard "${board.title}"`);
   res.json({ ok: true });

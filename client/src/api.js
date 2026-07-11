@@ -4,8 +4,7 @@ export const api = axios.create({
   baseURL: `${import.meta.env.VITE_SERVER_URL}/api`,
 });
 
-// Attach the JWT to every request. Reading localStorage here (not once at
-// startup) means login/logout take effect immediately without a reload.
+// attach the jwt to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {

@@ -12,7 +12,7 @@ function signToken(user) {
   });
 }
 
-// The shape of a user we send to clients — never includes passwordHash.
+// never include passwordHash in responses
 function publicUser(user) {
   return { id: user._id, name: user.name, email: user.email, avatar: user.avatar };
 }
@@ -42,15 +42,14 @@ router.post("/login", async (req, res) => {
   const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
     "+passwordHash"
   );
-  // Same error for unknown email and wrong password, so the response doesn't
-  // reveal which accounts exist.
+  // same error for unknown email and wrong password
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ message: "Invalid email or password" });
   }
   res.json({ token: signToken(user), user: publicUser(user) });
 });
 
-// Used by the client on page load to restore a session from a stored token.
+// used on page load to restore a session from a stored token
 router.get("/me", requireAuth, async (req, res) => {
   const user = await User.findById(req.userId);
   if (!user) {

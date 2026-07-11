@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
-// Version history for a document. It holds the live Tiptap `editor` so it can:
-//   - Save a snapshot: read the current content with editor.getJSON().
-//   - Restore: write a version's content back with editor.setContent(). Because
-//     the editor is bound to the shared Yjs doc, that write syncs to everyone
-//     currently editing and is persisted by the normal debounced save.
+// save = editor.getJSON() snapshot; restore = setContent(), which syncs to
+// everyone through the shared yjs doc.
 export default function VersionHistory({ editor, teamId, documentId }) {
   const [versions, setVersions] = useState([]);
   const [open, setOpen] = useState(false);
@@ -51,15 +48,12 @@ export default function VersionHistory({ editor, teamId, documentId }) {
     setError("");
     setBusy(true);
     try {
-      // 1. Snapshot the CURRENT content before we overwrite it — this is what
-      //    makes a restore reversible.
+      // snapshot the current content first so the restore is reversible
       const snapshot = await saveVersion(
         `Auto-saved before restore — ${new Date().toLocaleString()}`
       );
-      // 2. Fetch the chosen version's content and load it into the editor.
       const res = await api.get(`${base}/${v.id}`);
       editor.commands.setContent(res.data.version.content, true);
-      // Show both the auto-snapshot and the (unchanged) restored version.
       setVersions((prev) => [snapshot, ...prev]);
     } catch (err) {
       setError(err.response?.data?.message || "Could not restore version");

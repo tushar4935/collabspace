@@ -6,19 +6,16 @@ import CommentsSection from "../components/CommentsSection";
 import Navbar from "../components/Navbar";
 import { socket } from "../socket";
 
-// The canvas has a FIXED logical size instead of stretching to the window:
-// every user must agree on what (x, y) means for shared drawing to work.
+// fixed logical canvas size so (x, y) means the same thing for every user
 const BOARD_WIDTH = 1000;
 const BOARD_HEIGHT = 600;
 
 const TOOLS = ["pen", "rect", "circle", "eraser"];
 
-// Cursor positions update up to ~20×/second; sending every mousemove
-// (hundreds/second) would flood the connection for no visible gain.
+// throttle cursor updates to ~20/s instead of every mousemove
 const CURSOR_THROTTLE_MS = 50;
 
-// Deterministic color per socket id, so every client shows the same person
-// in the same color without any coordination.
+// deterministic color per socket id
 const CURSOR_COLORS = ["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#c084fc", "#f472b6"];
 function colorFor(socketId) {
   let hash = 0;
@@ -34,8 +31,7 @@ export default function WhiteboardPage() {
   const [error, setError] = useState("");
   const [presence, setPresence] = useState([]); // [{ socketId, name }]
   const [cursors, setCursors] = useState({}); // socketId -> { x, y, name }
-  // The in-progress shape lives in a ref, not state: a pen stroke updates on
-  // every mousemove and we only need to re-render the layer, not the page.
+  // in-progress shape lives in a ref — no need to re-render the page per mousemove
   const drawingRef = useRef(null);
   const lastCursorSentRef = useRef(0);
   const [, forceRender] = useState(0);
@@ -49,8 +45,7 @@ export default function WhiteboardPage() {
       );
   }, [teamId, whiteboardId]);
 
-  // Real-time wiring: join the board's room, take the one-time snapshot from
-  // the ack, then apply live events as they arrive.
+  // join the room, take the snapshot from the ack, then apply live events
   useEffect(() => {
     function join() {
       socket.emit("join-board", { boardId: whiteboardId }, (res) => {
@@ -64,7 +59,7 @@ export default function WhiteboardPage() {
       });
     }
 
-    // Upsert by id mirrors the server's last-write-wins rule.
+    // upsert by id (mirrors the server's last-write-wins rule)
     function onDraw({ element }) {
       setElements((prev) => {
         const idx = prev.findIndex((el) => el.id === element.id);
@@ -97,7 +92,7 @@ export default function WhiteboardPage() {
     }
 
     if (socket.connected) join();
-    // Re-join after any (re)connect — the server forgot us while we were gone.
+    // re-join after any (re)connect
     socket.on("connect", join);
     socket.on("draw", onDraw);
     socket.on("delete", onDelete);
@@ -126,8 +121,7 @@ export default function WhiteboardPage() {
   function handleMouseDown(e) {
     const pos = e.target.getStage().getPointerPosition();
     if (tool === "eraser") {
-      // The eraser removes WHOLE shapes by id (no pixel erasing): each shape
-      // is one unit with one id, which is what last-write-wins needs.
+      // eraser removes whole shapes by id (no pixel erasing)
       if (e.target !== e.target.getStage()) {
         const id = e.target.attrs.shapeId;
         if (id) {
@@ -137,7 +131,6 @@ export default function WhiteboardPage() {
       }
       return;
     }
-    // Every shape gets a unique id at creation time (see eraser note above).
     const id = crypto.randomUUID();
     if (tool === "pen") {
       drawingRef.current = { id, type: "pen", points: [pos.x, pos.y] };
@@ -152,7 +145,6 @@ export default function WhiteboardPage() {
   function handleMouseMove(e) {
     const pos = e.target.getStage().getPointerPosition();
 
-    // Share the cursor position whether or not we're drawing (throttled).
     const now = Date.now();
     if (pos && now - lastCursorSentRef.current >= CURSOR_THROTTLE_MS) {
       lastCursorSentRef.current = now;
@@ -176,15 +168,13 @@ export default function WhiteboardPage() {
     const shape = drawingRef.current;
     if (!shape) return;
     drawingRef.current = null;
-    // Discard accidental clicks that never became a visible shape.
+    // discard clicks that never became a visible shape
     const isVisible =
       (shape.type === "pen" && shape.points.length > 2) ||
       (shape.type === "rect" && shape.width !== 0 && shape.height !== 0) ||
       (shape.type === "circle" && shape.radius > 1);
     if (isVisible) {
-      // Finished shapes are broadcast on mouse-up, not per mousemove — one
-      // event per shape keeps the wire quiet, and the live cursor already
-      // shows others that someone is drawing.
+      // broadcast on mouse-up, one event per finished shape
       commitElement(shape);
     } else {
       forceRender((n) => n + 1);
@@ -198,8 +188,7 @@ export default function WhiteboardPage() {
   }
 
   function renderShape(shape) {
-    // shapeId (not Konva's reserved `id`) so the eraser can read it back
-    // off the clicked Konva node via e.target.attrs.shapeId.
+    // shapeId (konva reserves `id`) — the eraser reads it off the clicked node
     const common = { shapeId: shape.id, stroke: "#e5e7eb", strokeWidth: 2 };
     if (shape.type === "pen") {
       return (
@@ -209,7 +198,6 @@ export default function WhiteboardPage() {
           points={shape.points}
           lineCap="round"
           lineJoin="round"
-          // Widen the clickable area so the eraser can hit thin strokes.
           hitStrokeWidth={12}
         />
       );
@@ -305,8 +293,7 @@ export default function WhiteboardPage() {
               {elements.map(renderShape)}
               {drawingRef.current && renderShape(drawingRef.current)}
             </Layer>
-            {/* Other users' cursors sit on their own layer, above the art
-                and outside its hit-testing (listening=false). */}
+            {/* other users' cursors, outside hit-testing */}
             <Layer listening={false}>
               {Object.entries(cursors).map(([socketId, c]) => (
                 <Circle key={socketId} x={c.x} y={c.y} radius={4} fill={colorFor(socketId)} />

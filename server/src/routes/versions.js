@@ -5,13 +5,12 @@ import { requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
 import { logActivity } from "../utils/activity.js";
 
-// Mounted at /api/teams/:teamId/documents/:documentId/versions.
+// mounted at /api/teams/:teamId/documents/:documentId/versions
 const router = Router({ mergeParams: true });
 
 router.use(requireAuth, requireMembership());
 
-// Every version route is scoped to a document that must belong to the team in
-// the URL — the same (id, teamId) guard used everywhere else.
+// the document must belong to the team in the url
 router.use(async (req, res, next) => {
   const doc = await Document.findOne({
     _id: req.params.documentId,
@@ -35,9 +34,7 @@ function versionSummary(v) {
   };
 }
 
-// POST — save a snapshot. The client sends the current editor content as
-// ProseMirror JSON. Any member can save a version (it's part of editing).
-// This same endpoint is what "snapshot before restore" calls first.
+// POST — save a snapshot (prosemirror json from the client)
 router.post("/", async (req, res) => {
   const { label, content } = req.body;
   if (typeof content !== "object" || content === null) {
@@ -58,7 +55,7 @@ router.post("/", async (req, res) => {
   res.status(201).json({ version: versionSummary(version) });
 });
 
-// GET — list versions (metadata only; snapshots can be large).
+// GET — list versions (metadata only)
 router.get("/", async (req, res) => {
   const versions = await DocumentVersion.find({
     documentId: req.params.documentId,
@@ -68,7 +65,7 @@ router.get("/", async (req, res) => {
   res.json({ versions: versions.map(versionSummary) });
 });
 
-// GET /:versionId — one version WITH its content, for preview/restore.
+// GET /:versionId — one version with content, for preview/restore
 router.get("/:versionId", async (req, res) => {
   const version = await DocumentVersion.findOne({
     _id: req.params.versionId,

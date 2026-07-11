@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 
-// The role lives HERE, on the user–team pair, not on the User document.
-// One person can be the owner of team A and a plain member of team B at the
-// same time; a single role field on User could not express that.
+// role lives on the user–team pair, so one user can have different roles in different teams
 const membershipSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -12,7 +10,7 @@ const membershipSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// A user can belong to a team only once.
+// one membership per user per team
 membershipSchema.index({ userId: 1, teamId: 1 }, { unique: true });
 
 export default mongoose.model("Membership", membershipSchema);

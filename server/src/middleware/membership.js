@@ -1,12 +1,7 @@
 import Membership from "../models/Membership.js";
 
-// Role check for routes shaped like /api/teams/:teamId/...
-// Looks up the caller's Membership in THAT team and checks its role — this is
-// the whole point of putting roles on the membership: the same user gets
-// different powers in different teams.
-//
-// requireMembership()          -> any member of the team may pass
-// requireMembership("owner")   -> only the team's owner may pass
+// role check for /api/teams/:teamId/... routes.
+// requireMembership() = any member, requireMembership("owner") = owner only
 export function requireMembership(...allowedRoles) {
   return async (req, res, next) => {
     const membership = await Membership.findOne({

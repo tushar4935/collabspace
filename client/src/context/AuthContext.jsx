@@ -6,8 +6,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  // true while we check a stored token on page load, so ProtectedRoute
-  // doesn't bounce a logged-in user to /login before the check finishes.
+  // true while restoring a session from a stored token on page load
   const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
@@ -22,7 +21,7 @@ export function AuthProvider({ children }) {
       .finally(() => setRestoring(false));
   }, []);
 
-  // Keep the socket connected only while someone is logged in.
+  // socket stays connected only while logged in
   useEffect(() => {
     if (!user) return;
     socket.connect();
@@ -42,8 +41,6 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    // JWTs are stateless: logging out is client-side. Drop the token and the
-    // server rejects every request that no longer carries it.
     localStorage.removeItem("token");
     setUser(null);
   }

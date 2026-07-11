@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 
-// Reads "Authorization: Bearer <token>", verifies the JWT, and puts the
-// user's id on req.userId. Any route behind this middleware can trust it.
+// verifies "Authorization: Bearer <token>" and sets req.userId
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;

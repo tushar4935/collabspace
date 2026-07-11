@@ -1,9 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* Remote collaborators' live carets, drawn by Tiptap's CollaborationCursor.
-   The extension sets each caret/label color inline from the user's color;
-   this CSS only handles width, position, and the little name label. */
+/* remote carets drawn by tiptap's CollaborationCursor (colors are set inline) */
 .collaboration-cursor__caret {
   position: relative;
   margin-left: -1px;

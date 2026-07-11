@@ -10,8 +10,7 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
 
-  // Load the durable list once, then keep it live via Socket.io. MongoDB is
-  // the record of truth; the socket only delivers new ones while we're here.
+  // load the saved list once, then receive new ones over the socket
   useEffect(() => {
     api
       .get("/notifications")
@@ -29,7 +28,7 @@ export default function NotificationBell() {
     return () => socket.off("notification", onNotification);
   }, []);
 
-  // Close the dropdown when clicking outside it.
+  // close the dropdown on outside click
   useEffect(() => {
     function onClick(e) {
       if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);

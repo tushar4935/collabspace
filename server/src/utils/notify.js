@@ -1,10 +1,7 @@
 import Notification from "../models/Notification.js";
 import { emitToUser } from "../socket.js";
 
-// Create a notification in MongoDB and, if the recipient is online, push it
-// over Socket.io immediately. MongoDB is the durable record (loaded by the
-// bell on next visit); the socket push is the live update. Failures are
-// swallowed so a notification problem never breaks the action that caused it.
+// save to mongo, then push over socket.io if the user is online. best-effort.
 export async function notify(userId, { type, message, link = null }) {
   try {
     const n = await Notification.create({ userId, type, message, link });

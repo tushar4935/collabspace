@@ -13,19 +13,10 @@ import Comment from "./models/Comment.js";
 import Notification from "./models/Notification.js";
 import ActivityLog from "./models/ActivityLog.js";
 
-// ---------------------------------------------------------------------------
-// Seed script. Wipes every collection this app owns and inserts a small, known
-// data set so a fresh clone (or a fresh deploy) has something to log into and
-// demo: three users, one team with three memberships, a document that already
-// has text, and a whiteboard that already has shapes.
-//
-//   node src/seed.js        (or:  npm run seed)
-//
-// It is DESTRUCTIVE on purpose — see clearing step below. Run it against your
-// own database only.
-// ---------------------------------------------------------------------------
+// npm run seed — wipes all collections and inserts demo data.
+// Run against your own database only.
 
-const PASSWORD = "password123"; // same for all seed users, printed at the end
+const PASSWORD = "password123"; // same for all seed users
 
 const SEED_USERS = [
   { name: "Ava Owner", email: "ava@collabspace.dev", role: "owner" },
@@ -33,12 +24,8 @@ const SEED_USERS = [
   { name: "Cara Member", email: "cara@collabspace.dev", role: "member" },
 ];
 
-// Build a real Yjs document so the seeded doc opens with content already in it.
-// Tiptap's Collaboration extension binds to the XmlFragment named "default";
-// each block is an <paragraph> element holding one XmlText. We encode the whole
-// doc to a single update and store it in Document.yjsState — exactly what the
-// live editor writes and reloads. (Kept to plain paragraphs so it renders
-// identically no matter the Tiptap node config.)
+// build real yjs state so the seeded doc opens with content.
+// tiptap's Collaboration extension binds to the XmlFragment named "default".
 const DOC_PARAGRAPHS = [
   "Welcome to CollabSpace — this document is live and collaborative.",
   "Open it in two browser windows and type in both. Your edits merge instead of overwriting each other, because the text is a Yjs CRDT, not a whole-document broadcast.",
@@ -57,8 +44,7 @@ function buildYjsState(paragraphs) {
   return Buffer.from(Y.encodeStateAsUpdate(ydoc));
 }
 
-// The matching ProseMirror JSON, stored as the first saved version so the
-// History panel isn't empty on a fresh install.
+// same content as prosemirror json, for the first saved version
 function docJSON(paragraphs) {
   return {
     type: "doc",
@@ -69,10 +55,7 @@ function docJSON(paragraphs) {
   };
 }
 
-// A few whiteboard shapes in the exact shape the client draws and the socket
-// layer persists: every element carries a client-style unique `id` (that id is
-// what makes last-write-wins work in real time). Coordinates fit the fixed
-// 1000×600 logical board.
+// shapes in the same format the client draws (unique id per element)
 function seedShapes() {
   return [
     { id: crypto.randomUUID(), type: "rect", x: 120, y: 90, width: 240, height: 140 },
@@ -88,8 +71,6 @@ function seedShapes() {
 async function seed() {
   await connectDB();
 
-  // 1. Wipe. Clearing every collection keeps the seed deterministic — re-running
-  //    always yields the same known state, never duplicates.
   console.log("Clearing existing data…");
   await Promise.all([
     User.deleteMany({}),
@@ -103,8 +84,7 @@ async function seed() {
     ActivityLog.deleteMany({}),
   ]);
 
-  // 2. Users. Passwords are bcrypt-hashed the same way the register route does
-  //    it (cost 10), so seeded accounts log in through the normal flow.
+  // hashed the same way the register route does it
   const passwordHash = await bcrypt.hash(PASSWORD, 10);
   const users = await User.create(
     SEED_USERS.map((u) => ({ name: u.name, email: u.email, passwordHash }))
@@ -112,9 +92,6 @@ async function seed() {
   const byEmail = Object.fromEntries(users.map((u) => [u.email, u]));
   const owner = byEmail["ava@collabspace.dev"];
 
-  // 3. Team + memberships. The role lives on Membership (the user–team pair),
-  //    never on User — that is how one person can own one team and be a plain
-  //    member of another.
   const team = await Team.create({ name: "Product Team", ownerId: owner._id });
   await Membership.create(
     SEED_USERS.map((u) => ({
@@ -124,7 +101,6 @@ async function seed() {
     }))
   );
 
-  // 4. A document with real content, plus its first saved version.
   const document = await Document.create({
     title: "Product Roadmap",
     teamId: team._id,
@@ -138,7 +114,6 @@ async function seed() {
     createdBy: owner._id,
   });
 
-  // 5. A whiteboard with a few shapes already on it.
   const whiteboard = await Whiteboard.create({
     title: "Architecture Sketch",
     teamId: team._id,
@@ -146,16 +121,15 @@ async function seed() {
     elements: seedShapes(),
   });
 
-  // 6. A little activity so the team feed isn't blank.
   await ActivityLog.create([
     { teamId: team._id, userId: owner._id, action: 'created document "Product Roadmap"' },
     { teamId: team._id, userId: owner._id, action: 'created whiteboard "Architecture Sketch"' },
   ]);
 
-  console.log("\n✅ Seed complete.\n");
+  console.log("\nSeed complete.\n");
   console.log("Log in with any of these (password for all: %s):", PASSWORD);
   for (const u of SEED_USERS) {
-    console.log(`  • ${u.email.padEnd(26)} ${u.role}`);
+    console.log(`  - ${u.email.padEnd(26)} ${u.role}`);
   }
   console.log(`\nTeam:       Product Team`);
   console.log(`Document:   Product Roadmap   (${document._id})`);

@@ -5,8 +5,7 @@ import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import VersionHistory from "./VersionHistory";
 
-// A stable color per user name, so each person shows up the same color in
-// everyone's caret list without any server coordination.
+// stable color per user name (same on every client, no coordination needed)
 const CURSOR_COLORS = ["#f87171", "#fbbf24", "#34d399", "#60a5fa", "#c084fc", "#f472b6"];
 function colorForName(name) {
   let hash = 0;
@@ -28,23 +27,16 @@ function ToolbarButton({ active, onClick, children }) {
   );
 }
 
-// Receives an already-connected Yjs doc + provider from DocumentPage. Keeping
-// the hook in its own component means the provider is created once (in an
-// effect) before this ever mounts — the editor always has a live doc.
+// receives an already-connected yjs doc + provider from DocumentPage
 export default function CollaborativeEditor({ ydoc, provider, userName, teamId, documentId }) {
   const [status, setStatus] = useState(provider.wsconnected ? "connected" : "connecting");
   const [peers, setPeers] = useState([]);
 
   const editor = useEditor({
     extensions: [
-      // StarterKit ships its own undo/redo ("history"), but Collaboration
-      // brings a Yjs-aware undo manager. Running both corrupts the shared
-      // document, so StarterKit's history MUST be turned off here.
+      // starterkit history must be off — Collaboration brings its own yjs-aware undo
       StarterKit.configure({ history: false }),
-      // Binds the editor to the shared Yjs document — this is what makes edits
-      // merge instead of clobber. No manual "broadcast my content" anywhere.
       Collaboration.configure({ document: ydoc }),
-      // Shows every other person's live caret and selection.
       CollaborationCursor.configure({
         provider,
         user: { name: userName, color: colorForName(userName) },
@@ -64,8 +56,7 @@ export default function CollaborativeEditor({ ydoc, provider, userName, teamId, 
     }
     provider.on("status", onStatus);
 
-    // Awareness = who else is connected, straight from the provider. We read
-    // the distinct user names present (excluding ourselves).
+    // awareness = who else is connected (excluding ourselves)
     const awareness = provider.awareness;
     function onAwareness() {
       const names = new Set();
